@@ -1,161 +1,263 @@
 
-Item = tuple[int, str, str, int, int]
+TYPE_MAP = {
+    "int": int,
+    "str": str,
+}
 
-Tables: dict[str, list[Item]] = {}
+Tables: dict[str, dict] = {}
 
-ID_LENGTH = 2
+ID_LENGTH = 3
 
 
-# Cоздание таблицы
+def create_table(
+    table_name: str,
+    columns: list[tuple[str, str]]
+) -> None:
 
-def create_table(table_name: str) -> None:
+    table_name = table_name.strip()
+
+    if not table_name:
+        raise ValueError(
+            "Имя таблицы не может быть пустым"
+        )
+
     if table_name in Tables:
-        raise ValueError(f"Таблица '{table_name}' уже существует")
+        raise ValueError(
+            f"Таблица '{table_name}' уже существует"
+        )
 
-    Tables[table_name] = []
+    schema = {
+        "id": int
+    }
 
-# Выбор таблицы
+    for column_name, column_type in columns:
 
-def _get_table(table_name: str) -> list[Item]:
+        column_name = column_name.strip()
+        column_type = column_type.strip().lower()
+
+        if not column_name:
+            raise ValueError(
+                "Имя столбца не может быть пустым"
+            )
+
+        if column_name == "id":
+            raise ValueError(
+                "Столбец 'id' создаётся автоматически"
+            )
+
+        if column_name in schema:
+            raise ValueError(
+                f"Столбец '{column_name}' уже существует"
+            )
+
+        if column_type not in TYPE_MAP:
+            raise ValueError(
+                "Допустимые типы: int, str"
+            )
+
+        schema[column_name] = TYPE_MAP[column_type]
+
+    Tables[table_name] = {
+        "schema": schema,
+        "rows": []
+    }
+
+
+def _get_table(table_name: str) -> dict:
+
     if table_name not in Tables:
-        raise ValueError(f"Таблица '{table_name}' не существует")
+        raise ValueError(
+            f"Таблица '{table_name}' не существует"
+        )
+
     return Tables[table_name]
 
 
-# Создание записи
+def _validate_record(
+    schema: dict,
+    record: dict
+) -> None:
+
+    if "id" not in record:
+        raise ValueError("Отсутствует ID")
+
+    item_id = record["id"]
+
+    if not isinstance(item_id, int):
+        raise ValueError(
+            "ID должен быть целым числом"
+        )
+
+    if len(str(abs(item_id))) != ID_LENGTH:
+        raise ValueError(
+            "ID должен содержать 3 цифры"
+        )
+
+    for field_name, field_type in schema.items():
+
+        if field_name not in record:
+            raise ValueError(
+                f"Поле '{field_name}' отсутствует"
+            )
+
+        value = record[field_name]
+
+        if field_type is int:
+
+            if not isinstance(value, int):
+                raise ValueError(
+                    f"Поле '{field_name}' "
+                    f"должно быть int"
+                )
+
+        elif field_type is str:
+
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+            ):
+                raise ValueError(
+                    f"Поле '{field_name}' "
+                    f"должно быть непустой строкой"
+                )
+
 
 def create_item(
     table_name: str,
-    item_id: int,
-    name: str,
-    sector: str,
-    line: int,
-    storey: int
-) -> Item:
+    data: dict
+) -> dict:
 
     table = _get_table(table_name)
 
-    if not isinstance(item_id, int):
-        raise TypeError("ID должен быть целым числом")
+    schema = table["schema"]
+    rows = table["rows"]
 
-    if len(str(abs(item_id))) != ID_LENGTH:
-        raise ValueError("ID должен содержать 2 цифры")
+    _validate_record(schema, data)
 
-    if not isinstance(name, str) or not name.strip():
-        raise ValueError("Некорректное наименование")
+    for row in rows:
 
-    if not isinstance(sector, str) or not sector.strip():
-        raise ValueError("Некорректный сектор")
+        if row["id"] == data["id"]:
+            raise ValueError(
+                f"Запись с ID "
+                f"{data['id']} уже существует"
+            )
 
-    if not isinstance(line, int) or line < 0:
-        raise ValueError("Номер ряда должен быть положительным числом")
+    rows.append(data.copy())
 
-    if not isinstance(storey, int) or storey < 0:
-        raise ValueError("Номер яруса должен быть положительным числом")
-
-    # уникальность внутри таблицы
-    for item in table:
-        if item[0] == item_id:
-            raise ValueError(f"Запись с ID {item_id} уже существует")
-
-    item: Item = (
-        item_id,
-        name.strip(),
-        sector.strip(),
-        line,
-        storey
-    )
-
-    table.append(item)
-    return item
-
-
-
-# Чтение записей
+    return data.copy()
 
 
 def select_item(
     table_name: str,
-    item_id: int | None = None,
-    name: str | None = None,
-    sector: str | None = None,
-    line: int | None = None,
-    storey: int | None = None
-) -> list[Item]:
+    filters: dict | None = None
+) -> list[dict]:
 
     table = _get_table(table_name)
 
-    if (
-        item_id is None
-        and name is None
-        and sector is None
-        and line is None
-        and storey is None
-    ):
-        return table.copy()
+    rows = table["rows"]
 
-    result: list[Item] = []
+    if not filters:
+        return [row.copy() for row in rows]
 
-    for record in table:
+    result = []
 
-        if item_id is not None and record[0] != item_id:
-            continue
+    for row in rows:
 
-        if name is not None and record[1] != name:
-            continue
+        matched = True
 
-        if sector is not None and record[2] != sector:
-            continue
+        for field, value in filters.items():
 
-        if line is not None and record[3] != line:
-            continue
+            if row.get(field) != value:
+                matched = False
+                break
 
-        if storey is not None and record[4] != storey:
-            continue
-
-        result.append(record)
+        if matched:
+            result.append(row.copy())
 
     return result
 
-# Обновление записей
 
 def update_item(
     table_name: str,
     item_id: int,
-    name: str | None = None,
-    sector: str | None = None,
-    line: int | None = None,
-    storey: int | None = None
-) -> Item:
+    updates: dict
+) -> dict:
 
     table = _get_table(table_name)
 
-    for i, item in enumerate(table):
+    schema = table["schema"]
+    rows = table["rows"]
 
-        if item[0] == item_id:
+    for row in rows:
 
-            updated = (
-                item[0],
-                name.strip() if name is not None else item[1],
-                sector.strip() if sector is not None else item[2],
-                line if line is not None else item[3],
-                storey if storey is not None else item[4],
+        if row["id"] == item_id:
+
+            updated = row.copy()
+
+            for key, value in updates.items():
+
+                if key == "id":
+                    continue
+
+                if key not in schema:
+                    raise ValueError(
+                        f"Поле '{key}' "
+                        f"не существует"
+                    )
+
+                updated[key] = value
+
+            _validate_record(
+                schema,
+                updated
             )
 
-            table[i] = updated
-            return updated
+            row.clear()
+            row.update(updated)
 
-    raise ValueError(f"Запись с ID {item_id} не найдена")
+            return updated.copy()
 
-# Удаление записей
-def delete_item(table_name: str, item_id: int) -> None:
+    raise ValueError(
+        f"Запись с ID {item_id} не найдена"
+    )
+
+
+def delete_item(
+    table_name: str,
+    item_id: int
+) -> None:
 
     table = _get_table(table_name)
 
-    for i, item in enumerate(table):
+    rows = table["rows"]
 
-        if item[0] == item_id:
-            del table[i]
+    for index, row in enumerate(rows):
+
+        if row["id"] == item_id:
+
+            del rows[index]
             return
 
-    raise ValueError(f"Запись с ID {item_id} не найдена")
+    raise ValueError(
+        f"Запись с ID {item_id} не найдена"
+    )
+
+
+def get_schema(
+    table_name: str
+) -> dict[str, type]:
+
+    table = _get_table(table_name)
+
+    return table["schema"].copy()
+
+
+def get_columns(
+    table_name: str
+) -> list[str]:
+
+    table = _get_table(table_name)
+
+    return list(
+        table["schema"].keys()
+    )
