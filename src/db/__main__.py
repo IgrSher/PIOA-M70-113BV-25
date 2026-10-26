@@ -1,8 +1,10 @@
 from .tui import TUI
+from .backend.file import FileDB
 
 
 def main() -> None:
-    app = TUI()
+    db = FileDB("database.json")
+    app = TUI(db)
     app.run()
 
 

@@ -1,19 +1,15 @@
-from .backend.memory import (
-    create_table,
-    create_item,
-    select_item,
-    update_item,
-    delete_item,
-    get_schema,
-    get_tables,
-)
-
+from .backend.memory import MemoryDB
 from .backend.errors import DatabaseError
 
 
 class TUI:
-    def __init__(self):
-        self.current_table: str | None = None
+    def __init__(self, db=None):
+        if db is None:
+            self.db = MemoryDB()
+        else:
+            self.db = db
+
+        self.current_table = None
 
     def _print_menu(self) -> None:
         print("\n=== База данных ===")
@@ -58,7 +54,7 @@ class TUI:
                 )
 
     def _show_tables(self) -> None:
-        tables = get_tables()
+        tables = self.db.get_tables()
 
         if not tables:
             print(
@@ -119,10 +115,7 @@ class TUI:
 
         try:
 
-            create_table(
-                table_name,
-                columns
-            )
+            self.db.create_table(table_name, columns)
 
             print(
                 f"Таблица "
@@ -138,7 +131,7 @@ class TUI:
             )
 
     def _select_table(self) -> None:
-        tables = get_tables()
+        tables = self.db.get_tables()
 
         if not tables:
 
@@ -188,9 +181,7 @@ class TUI:
 
             return
 
-        schema = get_schema(
-            table_name
-        )
+        schema = self.db.get_schema(table_name)
 
         record = {}
 
@@ -216,10 +207,7 @@ class TUI:
 
         try:
 
-            created = create_item(
-                table_name,
-                record
-            )
+            created = self.db.create_item(table_name, record)
 
             print(
                 "\nДобавлено:"
@@ -273,9 +261,7 @@ class TUI:
 
             return
 
-        records = select_item(
-            table_name
-        )
+        records = self.db.select_item(table_name)
 
         self._print_records(
             records
@@ -295,9 +281,7 @@ class TUI:
 
             return
 
-        schema = get_schema(
-            table_name
-        )
+        schema = self.db.get_schema(table_name)
 
         print(
             "\nДоступные поля:"
@@ -334,12 +318,7 @@ class TUI:
                 "Значение: "
             ).strip()
 
-        result = select_item(
-            table_name,
-            {
-                field_name: value
-            }
-        )
+        result = self.db.select_item(table_name)
 
         self._print_records(
             result
@@ -359,9 +338,7 @@ class TUI:
 
             return
 
-        schema = get_schema(
-            table_name
-        )
+        schema = self.db.get_schema(table_name)
 
         item_id = self._read_int(
             "ID записи: "
@@ -412,11 +389,7 @@ class TUI:
 
         try:
 
-            updated = update_item(
-                table_name,
-                item_id,
-                updates
-            )
+            updated = self.db.update_item(table_name, item_id, updates)
 
             print(
                 "\nОбновлено:"
@@ -451,10 +424,7 @@ class TUI:
 
         try:
 
-            delete_item(
-                table_name,
-                item_id
-            )
+            self.db.delete_item(table_name, item_id)
 
             print(
                 "Запись удалена"

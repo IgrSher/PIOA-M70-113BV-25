@@ -2,11 +2,7 @@ from src.db.tui import TUI
 
 
 class FakeInput:
-    """
-    Безопасный input-мок:
-    - не падает на StopIteration
-    - всегда завершает программу корректно
-    """
+
     def __init__(self, values):
         self.values = list(values)
         self.i = 0

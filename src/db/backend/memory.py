@@ -229,9 +229,7 @@ class MemoryDB:
                     "Допустимые типы: int, str"
                 )
 
-            schema[column_name] = (
-                TYPE_MAP[column_type]
-            )
+            schema[column_name] = TYPE_MAP[column_type]
 
         self.tables[table_name] = Table(
             table_name,
@@ -250,6 +248,36 @@ class MemoryDB:
             )
 
         return self.tables[table_name]
+
+    def get_tables(self) -> list[str]:
+        return list(self.tables.keys())
+
+    def create_item(self, table_name: str, data: dict) -> dict:
+        return self.get_table(table_name).create(data)
+
+    def select_item(
+        self,
+        table_name: str,
+        filters: dict | None = None
+    ) -> list[dict]:
+        return self.get_table(table_name).select(filters)
+
+    def update_item(
+        self,
+        table_name: str,
+        item_id: int,
+        updates: dict
+    ) -> dict:
+        return self.get_table(table_name).update(item_id, updates)
+
+    def delete_item(self, table_name: str, item_id: int) -> None:
+        self.get_table(table_name).delete(item_id)
+
+    def get_schema(self, table_name: str) -> dict[str, type]:
+        return self.get_table(table_name).get_schema()
+
+    def get_columns(self, table_name: str) -> list[str]:
+        return self.get_table(table_name).get_columns()
 
 
 _db = MemoryDB()
@@ -326,7 +354,3 @@ def get_columns(
         .get_table(table_name)
         .get_columns()
     )
-
-
-def get_tables() -> list[str]:
-    return list(_db.tables.keys())
